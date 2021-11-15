@@ -7,7 +7,7 @@ public class TopCamera : MonoBehaviour
     public int MoveSpeed = 5;
     public int KeyboardSpeedModifier = 20;
     public int ZoomSpeed = 100;
-    public float ZoomSizeMin = 30f;
+    public float ZoomSizeMin = 5f;
     public float ZoomSizeMax = 100f;
 
     public AnimationCurve MoveSpeedFromZoomCurve = new AnimationCurve();
@@ -22,9 +22,18 @@ public class TopCamera : MonoBehaviour
     public void Zoom(float value)
     {
         if (value < 0f)
+        {
+            Move.y += ZoomSpeed * Time.deltaTime;
+        }
+        else if (value > 0f)
+        {
+            Move.y -= ZoomSpeed * Time.deltaTime;
+        }
+
+        /*if (value < 0f)
             m_Camera.orthographicSize += ZoomSpeed * Time.deltaTime;
         else if (value > 0f)
-            m_Camera.orthographicSize -= ZoomSpeed * Time.deltaTime;
+            m_Camera.orthographicSize -= ZoomSpeed * Time.deltaTime;*/
 
         if (EnableMoveLimits)
             m_Camera.orthographicSize = Mathf.Clamp(m_Camera.orthographicSize, ZoomSizeMin, ZoomSizeMax);
@@ -32,11 +41,17 @@ public class TopCamera : MonoBehaviour
 
     float ComputeZoomSpeedModifier()
     {
-        float zoomRatio = Mathf.Clamp(1f - (ZoomSizeMax - m_Camera.orthographicSize) / (ZoomSizeMax - ZoomSizeMin), 0f, 1f);
+        float zoomRatio = Mathf.Clamp(1f - (ZoomSizeMax - transform.position.y) / (ZoomSizeMax - ZoomSizeMin), 0f, 1f);
         float zoomSpeedModifier = MoveSpeedFromZoomCurve.Evaluate(zoomRatio);
         //Debug.Log("zoomSpeedModifier " + zoomSpeedModifier);
 
         return zoomSpeedModifier;
+
+        //float zoomRatio = Mathf.Clamp(1f - (ZoomSizeMax - m_Camera.orthographicSize) / (ZoomSizeMax - ZoomSizeMin), 0f, 1f);
+        // float zoomSpeedModifier = MoveSpeedFromZoomCurve.Evaluate(zoomRatio);
+        //Debug.Log("zoomSpeedModifier " + zoomSpeedModifier);
+
+        //return zoomSpeedModifier;
     }
     public void MouseMove(Vector2 move)
     {
