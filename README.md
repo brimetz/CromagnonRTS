@@ -195,7 +195,7 @@ At the top-center, the __number of manufacturing points__ and the __number of ca
 * Ensure units maintain their formation during movement.
 
 ## Images
-![Alt text](Images\Example.png "Example") 
-![Alt text](Images\Example2.png "Example") 
-![Alt text](Images\UI.png "Example") 
-![Alt text](Images\UI2.png "Example") 
+![Alt text](Images/Example.png "Example") 
+![Alt text](Images/Example2.png "Example") 
+![Alt text](Images/UI.png "Example") 
+![Alt text](Images/UI2.png "Example") 
