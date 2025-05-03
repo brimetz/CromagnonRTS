@@ -1,16 +1,16 @@
 # RTS IA
 
-Projet RTS sur Unity dans l'objectif de coder une intelligence artificielle.
+RTS project developed in Unity with the objective of programming an artificial intelligence.
 
 ## Lancement
 
-Ajouter le projet sur Unity Hub et le lancer avec Unity2020.3.5f1.  
-Une build Window se trouve dans `Build\Windows\`.
+Add the project to __Unity Hub__ and launch it with __Unity 2020.3.5f1__.
+A Windows build is available in the `Build\Windows\` folder.
 
 ## Perception
 
-La Perception est un **Behaviour Tree** qui contient une séquence de buts qui tourne en boucle.  
-Les différents Buts possibles sont les suivants :  
+The Perception system is a **Behaviour Tree** a looping sequence of goals.  
+The possible goals are as follows:
 * Conquer ;
 * Construct Light UT ;
 * Construct Heavy UT ;
@@ -20,45 +20,50 @@ Les différents Buts possibles sont les suivants :
 * Secure ;
 * Repair.  
   
-Cette séquence, qui tourne en permanence, permet de tester la faisabilité des différents But afin de savoir lesquels sont possibles, et ainsi,  de déterminer le But le plus prioritaire en fonction de l’état de la partie et de la vision de l’IA. Pour tester les Buts, on utilise les différentes informations du Fog of War contenues dans l’AIController. Enfin, ce But est envoyé à l’AIController.  
-
+This continuously running sequence is used to evaluate the feasibility of each goal in order to determine which ones are achievable, and to identify the __highest-priority goal__ based on the game state and the AI's perception.
+To assess the goals, the system uses various __Fog of War__ data available in the AIController. Once selected, the chosen goal is then sent to the AIController.
 
 ## Fog of War
 
-Le Fog Of War donne à l’Unit Controller, donc au Player Controller et à l’IA Controller, une liste de Target Buildings, d’unités ennemies et de factories ennemies vues. Je vais vous expliquer comment ça fonctionne. Le **Fog Of War** contient 2 grilles : une qui indique ce qu’elle voit actuellement, et une autre qui montre ce qu’elle a vu. Chaque entité a un script **VisionEntity** qui contient leur _“range de vision”_ dans le World. On convertit ceci dans la grille. Chaque cellule de la grille contient une valeur en bitflags qui indique si la team rouge ou / et bleue voit cette cellule.
+The Fog of War system provides the Unit Controller and by extension, both the Player Controller and the AI Controller—with a list of visible target buildings, enemy units, and enemy factories. Here's how it works: 
+* The **Fog Of War** contains __two grids__ : 
+    * One that represents what __is currently visible__ 
+    * Another that represents what has been __previously seen__ 
 
+Each entity in the game is assigned a __VisionEntity__ script, which defines its vision range within the world. This range is converted into visibility data on the grid.
+Each cell of the grid contains bitflags indicating whether the red team, the blue team, or both can see that specific cell. 
 
-
-Par exemple, pour ajouter une factory dans la liste de factory vu, on convertit sa position dans la grille pour obtenir la cellule correspondante et on vérifie la valeur de celle-ci avec un bitwise pour la team choisie dans la grille “voit actuellement” : 
+For example, to add a factory to the list of visible factories, we convert its world position to the corresponding grid cell, then check the cell’s value using a bitwise operation to determine if it is currently visible to the specified team in the __“currently seen”__ grid:
 
 ```cs
 VisionSystem.IsVisible(1 << (int)Team, factory.position.xz)
 VisionSystem.WasVisible(1 << (int)Team, factory.position.xz)
-```
+``` 
 
-Les unités ennemis qui ne sont pas vu (IsVisible) sont cachés, même s’ils ont été vus. Les bâtiments apparaissent dès qu’ils ont été vus. Si l’unité capture un bâtiment neutre, le joueur le saura uniquement à la vue de ce bâtiment. Le Fog of War est entièrement fonctionnel.  
+Enemy units that are __not currently visible__ (IsVisible == false) are __hidden__, even if they were previously seen.
+However, __buildings remain visible__ once they have been spotted at least once.
+If a unit captures a __neutral building__, the player will only be aware of it when the building comes back into view.
+The Fog of War system is fully operational.
 
+## AIController  
 
-## AIController
-
-Elle permet de créer des bâtiments ainsi que des unités, par le biais de l’héritage du UnitController.  
-Nous avons ajouté la *Perception* à celui-ci afin de récupérer des buts pour les envoyés aux différents planner, *Strategical* et *Tactical*, qu’elle contient pour exécuter différents plans.  
-Elle contient également une liste d'escouades.  
-
+It allows the creation of __buildings and units__ through inheritance from the __UnitController__.
+We have added __Perception__ to this controller in order to retrieve goals and send them to the various planners, namely the __Strategical__ and __Tactical__ planners, to execute different plans.
+It also maintains a list of __squads__.
 
 ## Planner
 
-Un planner permet de trouver une liste d’action formant un plan qui permet d’aller d’un état initial à un état final grâce à un algorithme de recherche à multiple-passe.
-__État:__ c’est une suite de valeur qui permet de savoir comment se situe le monde.
-Une action: contient une post condition et une précondition, autrement dit, quelle est l'état avant et après cette action, ou quelle est l’action de cette action sur le monde aussi.
+A __planner__ is used to find a list of actions that form a plan, allowing the system to move from an __initial state to a final state__ through a multi-pass search algorithm.
 
+__State__: A sequence of values that represents the current status or configuration of the world.
+__Action__: Contains both a __post-condition__ and a __pre-condition__. In other words, it defines the state before and after the action is executed, as well as the effect of this action on the world.
 
 ## Strategical Planner
 
-C’est un Goal Oriented Action Planning Planner avec des états à 6 int formant des plans en 1 seule pass.  
-Le planner va recevoir un Goal et en sortir un plan d’action plutôt macro pour répondre au Goal envoyé.  
+This is a __Goal-Oriented Action Planning (GOAP) Planner__ with states defined by __6 integers__, forming plans in a single pass.
+The planner receives a Goal and generates a __macro-level action plan__ to achieve the specified goal.
 
-Il y au donc 6 int parce que le monde se définit comme ceci: 
+The use of 6 integers is because the world is defined as follows:
 * Ressources; 
 * FactoryLight; 
 * FactoryHeavy; 
@@ -67,8 +72,9 @@ Il y au donc 6 int parce que le monde se définit comme ceci:
 
 ## UpdateSquad
 
-Un seul passe car il forme un plan en parcourant 1 seule fois la liste d’actions possibles, (en vulgarisant, le planner fait une liste de course dans les actions possibles pour arriver à son état final).
-Les actions possibles: 
+A single pass is used because the planner forms a plan by traversing the list of possible actions just once. (In simple terms, the planner creates a shopping list of actions to reach the final state).
+
+The possible actions are:
 * CreateLightFactory;  
 * CreateHeavyFactory;  
 * CreateLightUT; 
@@ -76,36 +82,42 @@ Les actions possibles:
 * OrganizeArmy;  
 * UpdateSquad.  
 
-__Exemple de post pre condition :__
+#### __post/pre condition example:__
 * OrganiseArmy pre condition: currentnIdleSquad < finalNbIdleSquad;
 * OrganiseArmy post condition: currentIdleSquad++;  
 
 ## Target 
-Une structure utilisée pour les différents Buts. Elle contient une Location, qui est un lieu où se rendre. Une liste de points à sécuriser autour d’un bâtiment. Une entité à détruire ainsi qu’un bâtiment à conquérir.  
-Pour le **Conquer**, l’IA va chercher la target building la plus proche découverte afin de la capturer.  
-Pour le **Defend**, l’IA  va regarder toutes ses factories et checker si l’une d’entre elles est en train de se faire attaquer afin d’aller la défendre.  
-Pour le **Destroy**, l’IA va sélectionner l’une des factory de l'ennemie qui a déjà vu auparavant pour en faire sa cible et l’attaquer.  
-Pour le but **Explore**, on souhaite que l’IA découvre une zone qui n’a pas encore été vue par son équipe. Pour ce faire, il va prendre un point aléatoire sur la map et vérifier si cette position est atteignable et si elle n’a pas été encore vue. Sinon, on prend un autre point jusqu’à remplir ces deux conditions (on fait cette opération 5 fois, maximum).  
-Pour le **Flee**, l’IA sélectionne une de ses factories afin d’y rapatrier ses troupes pour fuire.  
-Pour le **Secure**, l’IA sélectionne une des target building qu’il a capturé, créer différent waypoint afin de patrouiller autour pour le sécuriser.  
-Pour le **Repair**, l’IA va regarder si une de ses factories ou une de ses unités a perdu de la vie afin de les réparer. 
+
+A structure used for different goals, it contains a __Location__ (a place to reach), a __list of points__ to secure around a building, an __entity__ to destroy and a __building__ to conquer
+* For __Conquer__, the AI will search for the __nearest discovered target building__ and capture it.
+* For __Defend__, the AI will check all of its __factories__ to see if any are __under attack__, and if so, it will go and defend them.
+* For __Destroy__, the AI will select one of the __enemy factories__ it has previously seen and make it the target to attack.
+* For the __Explore__ goal, the AI is tasked with discovering an area that hasn’t been seen by its team. It will pick a __random point on the map__, check if it’s reachable and hasn’t been seen yet. If not, it picks another point until both conditions are met (this operation is done up to 5 times maximum).
+* For __Flee__, the AI selects one of its __factories__ and retreats its troops there to escape.
+* For __Secure__, the AI will select one of the __target buildings__ it has captured, create several __waypoints__, and patrol the area to secure it.
+* For __Repair__, the AI will check if any of its __factories or units__ have lost health and will repair them accordingly.
 
 ## Squad
 
-Elle permet de gérer les différentes formations telles que : 
+It allows for managing different formations such as:
 * Unstructured;
 * Line; 
 * Column;
 * Square;
 * Triangle.
 
-Chaque squad a sa formation, si on la désélectionne et la re-sélectionne : elle gardera sa formation. Lorsqu’on modifie la Posture de la Squad, cela modifie la posture de chaque unité.  
+Each squad has its own formation. If it is deselected and then re-selected, it will retain its formation. When the Posture of the squad is modified, the posture of each unit within the squad is also updated accordingly.
 
 ## Tactical Planner 
 
-**Goal Oriented Action Planning Planner** avec les spécifications du **Simplified Action Structure+Plus Post-uniqueness unariness Single-valuedness** ayant des états en liste de valeur binaire.
+The Tactical part uses an __enhanced planner__ named __SAS+ -PUS (Bäckström & Nebel, 1995)__. 
+In brief, __SAS+__ stands for __Simplified Action Structures__, with the "+ - PUS" representing the addition of each condition to this pattern: 
+* "P" for __Post unique__, 
+* "U" for __Unary__, and 
+* "S" for __Single-Valued__. 
+By incorporating these conditions, the __algorithmic complexity__ for plan generation can be achieved at __O(N)__ with N the number of contexts for a state definition.
 
-### Monde définit en 7 valeurs binaires:
+### World state defined by 7 boolean values:
 * IsAtLocation;
 * TargetIsCaptured;
 * TargetIsDead;
@@ -113,16 +125,16 @@ Chaque squad a sa formation, si on la désélectionne et la re-sélectionne : el
 * SquadIsFull;
 * TargetIsRepaired.
 
-### Actions possibles: 
+### Available actions: 
 * Attack;
 * Goto;
 * Capture;
 * Idle;
 * Repair;
-* SearchRecrue;
+* SearchRecruit;
 * CarryOn.
 
-### But Tactique possible:
+### Tactical goals available:
 * Conquer;
 * Defend;
 * Destroy;
@@ -134,42 +146,53 @@ Chaque squad a sa formation, si on la désélectionne et la re-sélectionne : el
 ### Post/PréCondition:
 { 1, 0, 0, -1, -1, -1 } / Capture / { 1, 1, 0, -1, -1, -1 }  
 
+The key feature of the __Simplified Action Structure + Plus Post-Uniqueness Unariness Single-Valuedness__ allows for a __more optimized search algorithm__ because:
+A value in the state can only be changed by a single action.
+Each action can only change one value at a time.
 
-La particularité du **Simplified Action Structure+Plus Post-uniqueness unariness Single-valuedness** permet un algorithme de recherche plus optimisé grâce au fait que: une valeur de mon état ne peut être changé que par 1 seul action. Et que 1 action ne peut changer que 1 seule valeur à la fois.  
-Présence de la méta action CarryOn qui permet de créer des plans infinis cela permet d'éviter de rappeler le planner pour des plans qui vont être identiques.  
+Additionally, the presence of the __meta-action CarryOn__ enables the creation of __infinite plans__, which helps __avoid re-running__ the planner for plans that would be identical.
 
 ## Unit
-Le Unit utilise une **State Machine (FSM)** qui lui permet de gérer les différentes postures et leurs transitions. 
+The Unit uses a __Finite State Machine (FSM)__, which allows it to manage different __stances__ and their transitions. 
 * Passive;
 * Agressive;
-* Repair;
+* Repair; 
 
-La posture “Passive” s’agit de la posture initiale. Il faut cibler les cibles à attaquer, à réparer.  
-La posture "Agressive" permet d’attaquer directement l’ennemi le plus proche dans sa range.  
-La posture “Repair” (disponible qu’aux Troopers) permet de réparer directement l’unité allié la plus proche dans sa range.  
-Lorsque l’on donne une task à l’unité (Attack, capture, repair), l’unité va se déplacer vers l’objectif et dès qu’elle est à portée de range, exécutera la task.  
+The "__Passive__" stance is the initial posture. The unit must target __enemies to attack__ or allies to repair.
+The "__Aggressive__" stance allows the unit to directly __attack the nearest enemy__ within its range.
+The "__Repair__" stance (available only to __Troopers__) enables the unit to repair the nearest allied unit within its range.
+
+When a task (such as Attack, Capture, or Repair) is assigned to the unit, it will move toward the objective. Once within range, it will execute the task.
 
 ## UI
 
-Lorsqu’on sélectionne une unité, on peut choisir sa posture en bas à gauche de l’écran. De même lorsqu’on sélectionne une squad, en plus d’avoir un menu pour choisir sa formation.  
+When a unit is selected, its __posture__ can be chosen in the bottom-left corner of the screen. Similarly, when a squad is selected, there is a menu to choose its __formation__.
 
-Une minimap se situe en bas à droite et permet de voir les objectifs.
-En haut à droite, le bouton x1 permet de mettre le jeu à la vitesse initiale. Le bouton x2 permet d’accélérer la vitesse du jeu par deux.
-Un menu est disponible en cliquant sur “Echap”, cela permet de mettre en pause le jeu. Les boutons dans ce menu permettent de reprendre le jeu, de le recommencer et de le quitter.  
+A __minimap__ is located in the bottom-right corner and displays the __objectives__.
 
-En haut au milieu, il y est indiqué le nombre de points de fabrications et le nombre de Target Buildings capturés.  
+At the top-right, the __x1 button__ sets the game to its initial speed, while the __x2 button__ doubles the game speed.
 
-## Bonus possible
-- Ajouter des postures réactionnaires (Faire face, Poursuite etc)
-- Ajouter la gestion des meta task comme CarryOn dans le TacticalPlanner
-- Ajouter la recherche et l'identification des entities de la TargetStruct dans le planner pour faciliter l'architecture.
-- Ajout du déplacement via la minimap
-- Ajout de la mise en place de waypoint pour le joueur
-- Upgrade le planner Tactique pour qu'il prenne en compte les waypoints automatiquement dans son algo (éviter l'ajout via un if pour améliorer la lisibilité du code)
-- permettre de l'IA versus IA
-- Gestion en temps réel des formations, Ordonner les UT selon la position la plus proche dans la formation
-- Faire garder la formation pendant le déplacement
+A __menu__ is available by clicking on "__Escape__", which pauses the game. The buttons in this menu allow the game to be __resumed, restarted, or quit__.
 
+At the top-center, the __number of manufacturing points__ and the __number of captured target buildings__ are displayed.
+
+## Todo to enhance the project
+
+* Add reactive postures (e.g., Facing, Pursuit, etc.)
+
+* Implement management of meta-tasks like CarryOn in the Tactical Planner.
+
+* Add search and identification of entities within the TargetStruct in the planner to facilitate architecture.
+
+* Add movement via the minimap.
+
+* Implement waypoint placement for the player.
+
+* Upgrade the Tactical Planner to automatically consider waypoints in its algorithm (avoid adding them via an if statement to improve code readability).
+
+* Real-time management of formations, order units based on the closest position within the formation.
+
+* Ensure units maintain their formation during movement.
 
 ## Images
 ![Alt text](Images\Example.png "Example") 
